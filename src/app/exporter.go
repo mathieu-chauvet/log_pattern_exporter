@@ -32,7 +32,13 @@ func main() {
 	arrayMetrics := []string{}
 
 	for _, logfile := range logFilesToMonitor {
-		count := countErrors(logfile, *pattern)
+		count, err := countErrors(logfile, *pattern)
+
+		if err != nil {
+			log.Println("failed to count in file %s: %s", logfile, err)
+			continue
+		}
+
 		promTxt := prometheus_format(logfile, *pattern, count)
 
 		arrayMetrics = append(arrayMetrics, promTxt)
@@ -60,10 +66,11 @@ func writeToFile(metrics []string, outputFile string) {
 	file.Close()
 }
 
-func countErrors(logfile string, pattern string) int {
+func countErrors(logfile string, pattern string) (int, error) {
 	file, err := os.Open(logfile)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return 0, err
 	}
 	defer file.Close()
 	count := 0
@@ -80,7 +87,7 @@ func countErrors(logfile string, pattern string) int {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return count
+	return count, nil
 }
 
 func prometheus_format(logfile string, pattern string, nbErrors int) string {
