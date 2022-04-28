@@ -32,7 +32,7 @@ func main() {
 	var arrayMetrics []string
 
 	for _, logfile := range logFilesToMonitor {
-		count, err := countErrors(logfile, *pattern)
+		count, err := countOccurences(logfile, *pattern)
 
 		if err != nil {
 			log.Printf("failed to count in file %s: %s\n", logfile, err)
@@ -68,7 +68,7 @@ func writeToFile(metrics []string, outputFile string) {
 	file.Close()
 }
 
-func countErrors(logfile string, pattern string) (int, error) {
+func countOccurences(logfile string, pattern string) (int, error) {
 	file, err := os.Open(logfile)
 	if err != nil {
 		log.Println(err)
