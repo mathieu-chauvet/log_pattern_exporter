@@ -36,6 +36,8 @@ func main() {
 
 		if err != nil {
 			log.Println("failed to count in file %s: %s", logfile, err)
+			promTxt := prometheus_format(logfile, *pattern, -1)
+			arrayMetrics = append(arrayMetrics, promTxt)
 			continue
 		}
 
