@@ -29,19 +29,19 @@ func main() {
 	outputFile := flag.String("output_file", "/var/tmp/log_file_metrics.prom", "destination folder for the result")
 	flag.Parse()
 
-	arrayMetrics := []string{}
+	var arrayMetrics []string
 
 	for _, logfile := range logFilesToMonitor {
 		count, err := countErrors(logfile, *pattern)
 
 		if err != nil {
-			log.Println("failed to count in file %s: %s", logfile, err)
-			promTxt := prometheus_format(logfile, *pattern, -1)
+			log.Printf("failed to count in file %s: %s\n", logfile, err)
+			promTxt := prometheusFormat(logfile, *pattern, -1)
 			arrayMetrics = append(arrayMetrics, promTxt)
 			continue
 		}
 
-		promTxt := prometheus_format(logfile, *pattern, count)
+		promTxt := prometheusFormat(logfile, *pattern, count)
 
 		arrayMetrics = append(arrayMetrics, promTxt)
 	}
@@ -92,7 +92,7 @@ func countErrors(logfile string, pattern string) (int, error) {
 	return count, nil
 }
 
-func prometheus_format(logfile string, pattern string, nbErrors int) string {
+func prometheusFormat(logfile string, pattern string, nbErrors int) string {
 	res := fmt.Sprintf("pattern_in_log_count{logfile=\"%s\", pattern=\"%s\"} %d\n", logfile, pattern, nbErrors)
 	return res
 }
