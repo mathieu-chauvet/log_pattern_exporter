@@ -27,11 +27,25 @@ func main() {
 	//filePath := "/home/mathieuchauvet/grok_exporter/webHook.log"
 	pattern := flag.String("pattern", "ERROR", "pattern to search in files")
 	outputFile := flag.String("output_file", "/var/tmp/log_file_metrics.prom", "destination folder for the result")
+	configFile := flag.String("parameter_file", "/etc/log_pattern_exporter.conf", "Optional file containing the list of log files to parse")
 	flag.Parse()
 
 	var arrayMetrics []string
+	var filesToParse []string
 
-	for _, logfile := range logFilesToMonitor {
+	filesToParse = addFilesFromFlags(filesToParse)
+
+	filesToParse = addFilesFromConfigFile(filesToParse, *configFile)
+
+	arrayMetrics = searchPatternInFiles(filesToParse, pattern, arrayMetrics)
+
+	fmt.Println(arrayMetrics)
+	writeToFile(arrayMetrics, *outputFile)
+
+}
+
+func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics []string) []string {
+	for _, logfile := range filesToParse {
 		count, err := countOccurences(logfile, *pattern)
 
 		if err != nil {
@@ -45,10 +59,37 @@ func main() {
 
 		arrayMetrics = append(arrayMetrics, promTxt)
 	}
+	return arrayMetrics
+}
 
-	fmt.Println(arrayMetrics)
-	writeToFile(arrayMetrics, *outputFile)
+func addFilesFromConfigFile(filesToParse []string, fileName string) []string {
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Println("no config file found in : " + fileName)
+		return filesToParse
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+		if !strings.HasPrefix(scanner.Text(), "#") {
+			filesToParse = append(filesToParse, scanner.Text())
+		}
+	}
 
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return filesToParse
+}
+
+func addFilesFromFlags(filesToParse []string) []string {
+	for _, logfile := range logFilesToMonitor {
+		filesToParse = append(filesToParse, logfile)
+	}
+	return filesToParse
 }
 
 func writeToFile(metrics []string, outputFile string) {
