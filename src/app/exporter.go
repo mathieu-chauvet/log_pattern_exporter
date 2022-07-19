@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -117,19 +118,19 @@ func countOccurences(logfile string, pattern string) (int, error) {
 	}
 	defer file.Close()
 	count := 0
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), pattern) {
+
+	reader := bufio.NewReader(file)
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		if strings.Contains(string(line), pattern) {
 			count++
 		}
+
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
 	return count, nil
 }
 

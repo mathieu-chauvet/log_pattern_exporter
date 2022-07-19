@@ -23,3 +23,32 @@ func Test_prometheusFormat(t *testing.T) {
 		})
 	}
 }
+
+func Test_countOccurences(t *testing.T) {
+	type args struct {
+		logfile string
+		pattern string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int
+		wantErr bool
+	}{
+		{"count errors in big file", args{logfile: "../test_resources/shopify_webhook.log", pattern: "ERROR"}, 33, false},
+
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := countOccurences(tt.args.logfile, tt.args.pattern)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("countOccurences() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("countOccurences() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
