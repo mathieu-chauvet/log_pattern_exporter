@@ -13,7 +13,8 @@ func Test_prometheusFormat(t *testing.T) {
 		args args
 		want string
 	}{
-		{"basic test", args{"/var/example", "patrn", 10}, "pattern_in_log_count{logfile=\"/var/example\", pattern=\"patrn\"} 10\n"},
+		{"basic test", args{"/var/example", "patrn", 10}, "pattern_in_log_count_patrn{logfile=\"/var/example\", pattern=\"patrn\"} 10\n"},
+		{"basic test", args{"/var/example", "p/a/trn", 10}, "pattern_in_log_count_p_a_trn{logfile=\"/var/example\", pattern=\"p/a/trn\"} 10\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

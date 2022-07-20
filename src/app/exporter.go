@@ -46,8 +46,15 @@ func main() {
 }
 
 func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics []string) []string {
+	// Add helpers
+	arrayMetrics = append(arrayMetrics, prometheusHelpers(pattern))
+
 	for _, logfile := range filesToParse {
 		count, err := countOccurences(logfile, *pattern)
+
+		if logfile == "" {
+			continue
+		}
 
 		if err != nil {
 			log.Printf("failed to count in file %s: %s\n", logfile, err)
@@ -61,6 +68,10 @@ func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics [
 		arrayMetrics = append(arrayMetrics, promTxt)
 	}
 	return arrayMetrics
+}
+
+func prometheusHelpers(pattern *string) string {
+	return "# HELP pattern_in_log_count The total number of occurences of " + *pattern + ".\n# TYPE pattern_in_log_count counter" + "\n"
 }
 
 func addFilesFromConfigFile(filesToParse []string, fileName string) []string {
@@ -135,6 +146,15 @@ func countOccurences(logfile string, pattern string) (int, error) {
 }
 
 func prometheusFormat(logfile string, pattern string, nbErrors int) string {
-	res := fmt.Sprintf("pattern_in_log_count{logfile=\"%s\", pattern=\"%s\"} %d\n", logfile, pattern, nbErrors)
+	normalizedPattern := normalizePattern(pattern)
+	res := fmt.Sprintf("pattern_in_log_count_%s{logfile=\"%s\", pattern=\"%s\"} %d\n", normalizedPattern, logfile, pattern, nbErrors)
 	return res
+}
+
+func normalizePattern(pattern string) string {
+
+	pattern = strings.ReplaceAll(pattern, " ", "_")
+	pattern = strings.ReplaceAll(pattern, "/", "_")
+	pattern = strings.ReplaceAll(pattern, "\\", "_")
+	return pattern
 }
