@@ -1,5 +1,5 @@
 
-VERSION=1.0.2-SNAPSHOT
+VERSION=`1.0.2-RELEASE`
 
 hello:
 	echo "Hello"
