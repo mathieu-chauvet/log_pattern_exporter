@@ -29,6 +29,7 @@ func main() {
 	pattern := flag.String("pattern", "ERROR", "pattern to search in files")
 	outputFile := flag.String("output_file", "/var/tmp/log_file_metrics.prom", "destination folder for the result")
 	configFile := flag.String("parameter_file", "/etc/log_pattern_exporter.conf", "Optional file containing the list of log files to parse")
+	substringLimit := flag.Int("substring_limit", -1, "search pattern only in the first X caracters of the line")
 	flag.Parse()
 
 	var arrayMetrics []string
@@ -38,19 +39,19 @@ func main() {
 
 	filesToParse = addFilesFromConfigFile(filesToParse, *configFile)
 
-	arrayMetrics = searchPatternInFiles(filesToParse, pattern, arrayMetrics)
+	arrayMetrics = searchPatternInFiles(filesToParse, pattern, arrayMetrics, *substringLimit)
 
 	fmt.Println(arrayMetrics)
 	writeToFile(arrayMetrics, *outputFile)
 
 }
 
-func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics []string) []string {
+func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics []string, substringLimit int) []string {
 	// Add helpers
 	arrayMetrics = append(arrayMetrics, prometheusHelpers(pattern))
 
 	for _, logfile := range filesToParse {
-		count, err := countOccurences(logfile, *pattern)
+		count, err := countOccurences(logfile, *pattern, substringLimit)
 
 		if logfile == "" {
 			continue
@@ -121,7 +122,7 @@ func writeToFile(metrics []string, outputFile string) {
 	file.Close()
 }
 
-func countOccurences(logfile string, pattern string) (int, error) {
+func countOccurences(logfile string, pattern string, substringLimit int) (int, error) {
 	file, err := os.Open(logfile)
 	if err != nil {
 		log.Println(err)
@@ -136,6 +137,12 @@ func countOccurences(logfile string, pattern string) (int, error) {
 		if err == io.EOF {
 			break
 		}
+		if substringLimit != -1 {
+			if len(line) > substringLimit {
+				line = line[:substringLimit]
+			}
+		}
+
 		if strings.Contains(string(line), pattern) {
 			count++
 		}
