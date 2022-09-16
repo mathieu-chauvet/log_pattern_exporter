@@ -30,6 +30,7 @@ func main() {
 	outputFile := flag.String("output_file", "/var/tmp/log_file_metrics.prom", "destination folder for the result")
 	configFile := flag.String("parameter_file", "/etc/log_pattern_exporter.conf", "Optional file containing the list of log files to parse")
 	substringLimit := flag.Int("substring_limit", -1, "search pattern only in the first X caracters of the line")
+	extractFromLogs := flag.Bool("simple_extract", false, "set if the prometheus metric just has to be extracted from a file")
 	flag.Parse()
 
 	var arrayMetrics []string
@@ -38,6 +39,13 @@ func main() {
 	filesToParse = addFilesFromFlags(filesToParse)
 
 	filesToParse = addFilesFromConfigFile(filesToParse, *configFile)
+
+	if *extractFromLogs == true {
+
+		metricsMap := searchLastValues(filesToParse, pattern)
+		writeToFileFromMap(metricsMap, *outputFile)
+		return
+	}
 
 	arrayMetrics = searchPatternInFiles(filesToParse, pattern, arrayMetrics, *substringLimit)
 
@@ -69,6 +77,82 @@ func searchPatternInFiles(filesToParse []string, pattern *string, arrayMetrics [
 		arrayMetrics = append(arrayMetrics, promTxt)
 	}
 	return arrayMetrics
+}
+
+func searchLastValues(filesToParse []string, pattern *string) map[string]string {
+
+	m := make(map[string]string)
+
+	for _, logfile := range filesToParse {
+		if logfile == "" {
+			continue
+		}
+
+		file_map, err := findMetricsInFile(logfile, *pattern)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		for key, element := range file_map {
+			m[key] = element
+		}
+	}
+
+	return m
+
+}
+
+func writeToFileFromMap(metrics map[string]string, outputFile string) {
+	file, err := os.OpenFile(outputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+	}
+
+	datawriter := bufio.NewWriter(file)
+
+	for _, data := range metrics {
+		_, _ = datawriter.WriteString(data + "\n")
+	}
+
+	datawriter.Flush()
+	file.Close()
+}
+
+func findMetricsInFile(logfile string, pattern string) (map[string]string, error) {
+	file, err := os.Open(logfile)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer file.Close()
+	m := make(map[string]string)
+	reader := bufio.NewReader(file)
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+
+		if strings.Contains(string(line), pattern) {
+
+			key, value, _ := extractKeyValueMetric(string(line))
+			m[key] = value
+
+		}
+	}
+
+	return m, nil
+}
+
+func extractKeyValueMetric(line string) (string, string, error) {
+	key := strings.Split(line, " - ")[1]
+	key = strings.Split(key, "}")[0] + "}"
+
+	val := strings.Split(line, "}")[1]
+
+	return key, val, nil
+
 }
 
 func prometheusHelpers(pattern *string) string {
